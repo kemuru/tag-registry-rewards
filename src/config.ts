@@ -10,6 +10,8 @@ interface Config {
   MAX_REWARD: string
   TX_NETWORK_ID: string
   FILES_DIR: string
+  NEW_SUBGRAPH_URL: string
+
 }
 
 const getSanitizedConfig = (config: unknown): Config => {
