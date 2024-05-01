@@ -2,10 +2,11 @@ import { Item, Period, Tag } from "./types"
 import fetch from "node-fetch"
 import conf from "./config"
 
+// Use the original subgraph URL to fetch data that includes keys
 const fetchTagsByAddressInRegistry = async (
   caipAddress: string,
   registryType: "addressTags" | "tokens" | "domains",
-  subgraphEndpoint: string
+  subgraphEndpoint: string = conf.XDAI_GTCR_SUBGRAPH_URL // Default to original subgraph
 ): Promise<Item[]> => {
   const registry = {
     addressTags: conf.XDAI_REGISTRY_ADDRESS_TAGS,
@@ -26,6 +27,12 @@ const fetchTagsByAddressInRegistry = async (
             resolutionTime
             requester
           }
+          id
+          key0
+          key1
+          key2
+          key3
+          latestRequestResolutionTime
         }
       }
     `,
@@ -43,7 +50,7 @@ const fetchTagsByAddressInRegistry = async (
 
 const fetchTagsBatchByRegistry = async (
   period: Period,
-  subgraphEndpoint: string,
+  subgraphEndpoint: string = conf.XDAI_GTCR_SUBGRAPH_URL, // Default to original subgraph
   registry: string
 ): Promise<Item[]> => {
   const [start, end] = [
@@ -88,6 +95,32 @@ const fetchTagsBatchByRegistry = async (
   return tags
 }
 
+// Fetch correct requester information from the new subgraph
+const fetchCorrectRequester = async (itemId: string): Promise<string> => {
+  const query = JSON.stringify({
+    query: `
+      {
+        litems(where: { id: "${itemId}" }) {
+          requests {
+            requester
+          }
+        }
+      }
+    `
+  });
+
+  const response = await fetch(conf.NEW_SUBGRAPH_URL, {
+    method: "POST",
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: query
+  });
+
+  const requesterResult = await response.json();
+  return requesterResult.data.litems[0].requests[0].requester;
+}
 const parseCaip = (caip: string): { address: string; chain: number } => {
   const [, chain, address] = caip.split(":")
   return { chain: Number(chain), address }
@@ -97,14 +130,14 @@ const itemToTag = async (
   item: Item,
   registryType: "addressTags" | "tokens" | "domains"
 ): Promise<Tag> => {
-  // in all 3 registries, key0 is caip address
+  const correctRequester = await fetchCorrectRequester(item.id)
   const { chain, address } = parseCaip(item.key0)
   const tag: Tag = {
     id: item.id,
     registry: registryType,
     chain,
     latestRequestResolutionTime: Number(item.latestRequestResolutionTime),
-    submitter: item.requests[0].requester,
+    submitter: correctRequester,
     tagAddress: address,
   }
   return tag
