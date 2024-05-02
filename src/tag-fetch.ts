@@ -164,49 +164,47 @@ const nonTokensFromDomains = async (domainItems: Item[]): Promise<Item[]> => {
 export const fetchTags = async (
   period: Period
 ): Promise<Tag[]> => {
+  // Initialize arrays with explicit types
   const addressTagsItems: Item[] = await fetchTagsBatchByRegistry(
     period,
     conf.XDAI_GTCR_SUBGRAPH_URL,
     conf.XDAI_REGISTRY_ADDRESS_TAGS
-  )
+  );
 
-  const addressTags = await Promise.all(
-    addressTagsItems.map((item) => itemToTag(item, "addressTags"))
-  )
+  const addressTags: Tag[] = [];
+  for (const item of addressTagsItems) {
+    const tag = await itemToTag(item, "addressTags");
+    addressTags.push(tag);
+  }
 
   const tokensItems: Item[] = await fetchTagsBatchByRegistry(
     period,
     conf.XDAI_GTCR_SUBGRAPH_URL,
     conf.XDAI_REGISTRY_TOKENS
-  )
-  const tokens = await Promise.all(
-    tokensItems.map((item) => itemToTag(item, "tokens"))
-  )
+  );
+  const tokens: Tag[] = [];
+  for (const item of tokensItems) {
+    const tag = await itemToTag(item, "tokens");
+    tokens.push(tag);
+  }
 
   const domainsItems: Item[] = await fetchTagsBatchByRegistry(
     period,
     conf.XDAI_GTCR_SUBGRAPH_URL,
     conf.XDAI_REGISTRY_DOMAINS
-  )
+  );
+  const domains: Tag[] = [];
+  for (const item of domainsItems) {
+    const tag = await itemToTag(item, "domains");
+    domains.push(tag);
+  }
 
-  console.log("Filtering Tokens away from Domains for rewards")
-  const nonTokenDomainsItems = await nonTokensFromDomains(domainsItems)
-
-  const domains = await Promise.all(
-    nonTokenDomainsItems.map((item) => itemToTag(item, "domains"))
-  )
-
-  return (
-    addressTags
-      .concat(tokens)
-      .concat(domains)
-      // hack to filter out auxiliary address
-      .filter(
-        (tag) =>
-          tag.submitter !== "0xf313d85c7fef79118fcd70498c71bf94e75fc2f6" &&
-          tag.submitter !== "0xd0e76cfaa8af741f3a8b107eca76d393f734dace" &&
-          tag.submitter !== "0x6f8e399b94e117d9e44311306c4c756369682720" &&
-          tag.submitter !== "0xbf45d3c81f587833635b3a1907f5a26c208532e7"
-      )
-  )
+  // Concatenate all tags, apply filters, and return
+  const allTags = addressTags.concat(tokens).concat(domains);
+  return allTags.filter(tag => 
+    tag.submitter !== "0xf313d85c7fef79118fcd70498c71bf94e75fc2f6" &&
+    tag.submitter !== "0xd0e76cfaa8af741f3a8b107eca76d393f734dace" &&
+    tag.submitter !== "0x6f8e399b94e117d9e44311306c4c756369682720" &&
+    tag.submitter !== "0xbf45d3c81f587833635b3a1907f5a26c208532e7"
+  );
 }
