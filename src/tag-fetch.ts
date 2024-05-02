@@ -193,8 +193,12 @@ export const fetchTags = async (
     conf.XDAI_GTCR_SUBGRAPH_URL,
     conf.XDAI_REGISTRY_DOMAINS
   );
+
+  // Filtering tokens away from domains for rewards
+  const nonTokenDomainsItems = await nonTokensFromDomains(domainsItems);
+
   const domains: Tag[] = [];
-  for (const item of domainsItems) {
+  for (const item of nonTokenDomainsItems) {
     const tag = await itemToTag(item, "domains");
     domains.push(tag);
   }
